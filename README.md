@@ -68,10 +68,13 @@ Where:
 
 
 ## How to Run:
+### Clone the Repository
+
+```bash
 git clone https://github.com/towardsyourgoal/DecisionTreeClassifier_from_Scratch.git
 cd DecisionTreeClassifier_from_Scratch
 pip install -r requirements.txt
-
+```
 
 ## Tech-stack:
 Python
