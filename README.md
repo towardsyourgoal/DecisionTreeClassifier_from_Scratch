@@ -16,6 +16,8 @@ Numerical and categorical features
 This code builds the algorithm with numerical as well as categorical data. This way we are not loosing any context of the categorical features
 It builds the tree looking at the strings and numbers seperately, like human make decisions
 
+You need to map the labels though.
+
 ### 3. Selects the best feature to split the data using splitting criterion such as:
 Entropy (Information Gain)
 
