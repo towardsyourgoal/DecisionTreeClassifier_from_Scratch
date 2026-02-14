@@ -7,24 +7,24 @@ This repository contrains the logic of building this algorithm including how the
 
 
 ## Core characteristics:
-### It can handle-
+### 1. It can handle-
 Binary classification
 Multi-class classification
 Numerical and categorical features
 
-### No need for One-hot-encoding
+### 2. No need for One-hot-encoding
 This code builds the algorithm with numerical as well as categorical data. This way we are not loosing any context of the categorical features
 It builds the tree looking at the strings and numbers seperately, like human make decisions
 
-### Selects the best feature to split the data using splitting criterion such as:
+### 3. Selects the best feature to split the data using splitting criterion such as:
 Entropy (Information Gain)
 
-### It Recursively splits the dataset until:
+### 4. It Recursively splits the dataset until:
 Maximum depth is reached
 Minimum samples per leaf is reached
 Data becomes pure
 
-### Evaluation Metrics coded from scratch:
+### 5. Evaluation Metrics coded from scratch:
 Confusion Matrix
 Accuracy
 Precision
