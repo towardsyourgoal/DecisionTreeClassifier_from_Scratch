@@ -1,4 +1,5 @@
 import numpy as np
+from collections import Counter
 
 class Node:
     """
@@ -10,12 +11,13 @@ class Node:
     right - Right child node
     value - mode value for leaf nodes for Classification
     """
-    def __init__(self,feature_index=None,threshold=None,left=None,right=None,value=None):
+    def __init__(self,feature_index=None,threshold=None,left=None,right=None,value=None,label_counts=None):
         self.feature_index=feature_index
         self.threshold=threshold
         self.left=left
         self.right=right
         self.value=value
+        self.label_counts=label_counts
 
     def is_leaf_node(self):
         return self.value is not None
@@ -40,6 +42,7 @@ class DecisionTreeClassifier:
         self.FP=0
         self.TN=0
         self.FN=0
+        self.classes=None
 
 
     def entropy(self,y):
@@ -69,7 +72,7 @@ class DecisionTreeClassifier:
         """
         y=list(y)
         return max(y,key=y.count)
-
+    
 
     def find_best_split(self,X,y,feat_types):
         """
@@ -125,19 +128,21 @@ class DecisionTreeClassifier:
         This function performs the recursion and build the decision tree with best split at each node
         This returns a built tree, which we will be using to traverse during the prediction
         """
+        y_hash=np.ravel(y)
+        counts=Counter(y_hash)
         n_samples=len(y)
         #Stopping criteria logic
         if self.max_depth and depth>=self.max_depth:
-            return Node(value=self.calculate_leaf_value(y))
+            return Node(value=self.calculate_leaf_value(y), label_counts=counts)
         elif n_samples<self.min_samples_split:
-            return Node(value=self.calculate_leaf_value(y))
+            return Node(value=self.calculate_leaf_value(y), label_counts=counts)
         elif len(np.unique(y))==1:
-            return Node(value=self.calculate_leaf_value(y))
+            return Node(value=self.calculate_leaf_value(y), label_counts=counts)
         
         best_feature,best_threshold,l_indices,r_indices=self.find_best_split(X,y,feat_types)
 
         if best_feature is None:
-            return Node(value=self.calculate_leaf_value(y))
+            return Node(value=self.calculate_leaf_value(y), label_counts=counts)
 
         feature_index=best_feature
         threshold=best_threshold
@@ -159,6 +164,7 @@ class DecisionTreeClassifier:
         Xt=X.to_numpy()
         yt=y.to_numpy().reshape(-1,1)
         feature_types=X.dtypes
+        self.classes=np.unique(yt)
         self.root=self.build_tree(Xt,yt,feature_types)
 
 
@@ -195,6 +201,36 @@ class DecisionTreeClassifier:
         predictions=np.array([self.traverse_tree(x,self.root,col_types) for x in xtest])
         predictions=predictions.ravel()
         return predictions
+    
+    def traverse_tree_for_probs(self,x,node,col_types):
+        feat_types=list(col_types)
+        feat_index=node.feature_index
+        feature_data=x[feat_index]
+        if node.is_leaf_node():
+            total_samples=sum(node.label_counts.values())
+            probs= {label: count/total_samples for label, count in node.label_counts.items()}
+            probs_l=[probs.get(cls,0.0) for cls in self.classes]
+            return probs_l
+        
+        if feat_types[feat_index] == 'object' or feat_types[feat_index] == 'str' :
+            if feature_data==node.threshold:
+                return self.traverse_tree_for_probs(x,node.left,col_types)
+            else:
+                return self.traverse_tree_for_probs(x,node.right,col_types)
+        else:
+            if feature_data<=node.threshold:
+                return self.traverse_tree_for_probs(x,node.left,col_types)
+            else:
+                return self.traverse_tree_for_probs(x,node.right,col_types)
+        
+    
+    def prodict_probs(self,X):
+        col_types=X.dtypes
+        xtest=X.to_numpy()
+        probabilities=np.array([self.traverse_tree_for_probs(x,self.root,col_types) for x in xtest])
+        # probabilities=probabilities.ravel()
+        return probabilities
+
 
     def get_confusion_matrix(self,y_true,y_pred):
         """
@@ -337,3 +373,30 @@ class DecisionTreeClassifier:
             return TN/(TN+FP)
         else:
             print("this is binary-only metric")
+
+
+    def calculate_roc_auc_score(self,y_true,y_pred,pos_probs):
+        yt=np.array(y_true)
+        ytprobs=np.array(pos_probs)
+        classes=np.unique(np.concatenate((y_true,y_pred)))
+        n_classes=len(classes)
+        assert n_classes==2
+        test_pos_probabilities=pos_probs
+        sorted_indices = np.argsort(test_pos_probabilities)[::-1]
+        y_true_sorted = yt[sorted_indices]
+        y_probs_sorted = ytprobs[sorted_indices]
+        n_pos=(y_true==1).sum()
+        n_neg=(y_true==0).sum()
+        fpr_list = [0.0]
+        tpr_list = [0.0]
+        for i in range(len(y_probs_sorted)):
+            TP=(y_true_sorted[:i+1]==1).sum()
+            FP=(y_true_sorted[:i+1]==0).sum()
+            tpr=TP/n_pos if n_pos>0 else 0
+            fpr=FP/n_neg if n_neg>0 else 0
+            tpr_list.append(tpr)
+            fpr_list.append(fpr)
+        tpr_list.append(1.0)
+        fpr_list.append(1.0)
+        roc_auc = np.trapezoid(tpr_list, fpr_list)
+        return roc_auc
