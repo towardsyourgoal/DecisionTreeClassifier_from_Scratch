@@ -34,6 +34,7 @@ Recall
 F1 score
 FPR
 Specificity
+ROC-AUC score
 
 
 ## Mathematics it uses:
